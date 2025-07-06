@@ -1,10 +1,11 @@
+import { cn } from "@/lib/utils";
 import { NavLink } from "react-router";
 
 const Navigation = () => {
     return (
         <>
-            <nav className="bg-white border-gray-200 shadow">
-                <div className="max-w-screen flex flex-wrap items-center justify-between mx-auto p-2">
+            <nav className="bg-white border-gray-200 shadow max-w-screen overflow-hidden">
+                <div className="max-w-screen flex flex-wrap items-center justify-between mx-auto px-2 md:px-6 py-2">
                     <a
                         href="#"
                         className="flex items-center space-x-3 rtl:space-x-reverse"
@@ -45,17 +46,35 @@ const Navigation = () => {
                     <div className="hidden w-full md:block md:w-auto" id="navbar-default">
                         <ul className="font-medium flex flex-col p-4 md:p-0 mt-4 border border-gray-100 rounded-lg bg-gray-50 md:flex-row md:space-x-8 rtl:space-x-reverse md:mt-0 md:border-0 md:bg-white">
                             <li>
-                                <NavLink to={'/'} className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0">
+                                <NavLink
+                                    to={'/'}
+                                    className={({ isActive }: { isActive: boolean }) =>
+                                        cn(
+                                            "block py-2 px-3 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0",
+                                            { "text-blue-700": isActive, "text-gray-900": !isActive }
+                                        )
+                                    }
+                                >
                                     All Books
                                 </NavLink>
                             </li>
                             <li>
-                                <NavLink to={'/create-book '} className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0">
+                                <NavLink to={'/create-book '} className={({ isActive }: { isActive: boolean }) =>
+                                    cn(
+                                        "block py-2 px-3 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0",
+                                        { "text-blue-700": isActive, "text-gray-900": !isActive }
+                                    )
+                                }>
                                     Add Book
                                 </NavLink>
                             </li>
                             <li>
-                                <NavLink to={'/borrow-summary'} className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0">
+                                <NavLink to={'/borrow-summary'} className={({ isActive }: { isActive: boolean }) =>
+                                    cn(
+                                        "block py-2 px-3 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0",
+                                        { "text-blue-700": isActive, "text-gray-900": !isActive }
+                                    )
+                                }>
                                     Borrow Summary
                                 </NavLink>
                             </li>

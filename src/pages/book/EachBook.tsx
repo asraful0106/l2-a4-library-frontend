@@ -1,28 +1,41 @@
-import RotatingText from "@/components/reactBits/RotatingText";
-import BookCarousel from "./BookCarousel";
-import {
-    Tabs,
-    TabsList,
-    TabsTrigger,
-} from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button";
-import EachBook from "./EachBook";
-import { useCreateABookMutation, useGetAllBookQuery } from "@/redux/api/baseApi";
+import { cn } from "@/lib/utils";
 import type { IBook } from "@/types/IBook";
+import { BadgeCheckIcon, CircleX, HandCoins, PenLine, Trash2 } from "lucide-react";
 import { useState } from "react";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea"
-import { z } from 'zod';
-import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "react-toastify";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { HashLoader } from "react-spinners";
+import z from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useDeleteABookMutation, useEditABookMutation } from "@/redux/api/baseApi";
+import { toast } from "react-toastify";
+import Swal from 'sweetalert2';
+
+const EachBook = ({ data }: { data: IBook }) => {
+    const [focus, setFocus] = useState(false);
+    const handleMouseEnter = () => {
+        setFocus(true);
+    };
+
+    const handleMouseLeave = () => {
+        setFocus(false);
+    };
 
 
-const Book = () => {
+    // For handeling the edit modal
+    const [isEditData, setIsEditData] = useState<boolean>(false);
+
     const FormSchema = z.object({
         title: z.string().min(1, {
             message: 'Title is required'
@@ -40,30 +53,26 @@ const Book = () => {
             message: 'Copies should be a positive number'
         }),
         description: z.string().optional(),
+        available: z.boolean().optional(),
     });
-
-
-    // For creating new task
-    const [createABook, { isLoading: isLoadingforCreatig, isError }] = useCreateABookMutation();
-    // State for handeling the add book dialog
-    const [newDataForm, setNewDataForm] = useState<boolean>(false);
 
     const form = useForm<z.infer<typeof FormSchema>>({
         resolver: zodResolver(FormSchema),
         defaultValues: {
-            title: "",
-            author: "",
-            genre: undefined,
-            isbn: "",
-            copies: 0,
-            description: ""
+            ...data
         },
     });
 
-     async function onSubmit(data: z.infer<typeof FormSchema>) {
-        const res = await createABook(data);
-        // console.log("Res: " ,res);
-        if (isError) {
+    // For handeling the edit book data
+    const [editABook, { isLoading, error }] = useEditABookMutation();
+    const handleEdit = async (formData: z.infer<typeof FormSchema>) => {
+        const res = await editABook({
+            ...data,
+            ...formData,
+            available: formData.copies > 0 ? true : false
+        });
+
+        if (error) {
             toast.error('Something went wrong!', {
                 position: "top-right",
                 autoClose: 5000,
@@ -75,7 +84,7 @@ const Book = () => {
                 theme: "light",
             });
         }
-        if(!res?.error){
+        if (!res?.error) {
             toast.success('New book added successfully!', {
                 position: "top-right",
                 autoClose: 5000,
@@ -87,82 +96,64 @@ const Book = () => {
                 theme: "light",
             });
             form.reset();
-            setNewDataForm(false);
+            setIsEditData(false);
         }
     }
-    
-    //   Featching Data From API
-    const { data, error, isLoading } = useGetAllBookQuery(undefined);
-    let bookData: IBook[] = data?.data;
-    // State for doing filter
-    const [filter, setFilter] = useState<string>('all');
-    // Filter Logic
-    if (filter === "FICTION") {
-        bookData = bookData.filter(book => book.genre == "FICTION");
-    } else if (filter === "NON_FICTION") {
-        bookData = bookData.filter(book => book.genre == "NON_FICTION");
-    } else if (filter === "SCIENCE") {
-        bookData = bookData.filter(book => book.genre == "SCIENCE");
-    } else if (filter === "BIOGRAPHY") {
-        bookData = bookData.filter(book => book.genre == "BIOGRAPHY");
-    } else if (filter === "FANTASY") {
-        bookData = bookData.filter(book => book.genre == "FANTASY");
-    } else if (filter === "all") {
-        bookData = data?.data;
+
+    // For handeling the delete
+    const[deleteABook] = useDeleteABookMutation();
+
+    const handleDelete = async () =>{
+        Swal.fire({
+            title: "Are you sure?",
+            text: "You won't be able to revert this!",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Yes, delete it!"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                deleteABook(data._id);
+                Swal.fire({
+                    title: "Deleted!",
+                    text: "Your file has been deleted.",
+                    icon: "success"
+                });
+            }
+          });
     }
-    // console.log("F: ", bookData);
+
     return (
-        <div>
-            {/* Carousel Part */}
-            <div className="mt-6 md:mt-10 relative rounded overflow-hidden">
-                <BookCarousel />
-                <div className="absolute top-[30%] left-[24.2%] md:top-[40%] md:left-[30%] lg:top-1/2 lg:left-[40%]">
-                    <div className="flex items-center gap-2 flex-col md:flex-row w-[90%] md:w-full">
-                        <h1 className="text-sm text-white font-bold">Favorite Book</h1>
-                        <RotatingText
-                            texts={['Endless Journeys Begin Here.',
-                                '— Where Every Page Inspires.',
-                                'Your Gateway to New Worlds.',
-                                'Fueling Minds One Story at a Time.',
-                                "— Find Your Next Life-Changing Read."]}
-                            mainClassName=" text-sm px-2 sm:px-2 md:px-3 bg-cyan-300 text-black overflow-hidden py-0.5 sm:py-1 md:py-2 justify-center rounded-lg"
-                            staggerFrom={"last"}
-                            initial={{ y: "100%" }}
-                            animate={{ y: 0 }}
-                            exit={{ y: "-120%" }}
-                            staggerDuration={0.025}
-                            splitLevelClassName="overflow-hidden pb-0.5 sm:pb-1 md:pb-1"
-                            transition={{ type: "spring", damping: 30, stiffness: 400 }}
-                            rotationInterval={2000}
-                        />
-                    </div>
+        <div
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave} className={cn("h-[34rem] w-fit rounded-b")}>
+            <div className="relative">
+                <div className={cn("h-[23rem] w-[16rem]", { "brightness-75": focus })}>
+                    <img className="w-full h-full object-cover" src="https://booklovers.ancorathemes.com/wp-content/uploads/2020/05/book5-copyright.jpg" alt="" />
                 </div>
-            </div>
-            {/* Book Part */}
-            <div>
-                <div className="mt-15 px-6 w-full flex items-center gap-6 lg:gap-0 lg:justify-between flex-col lg:flex-row overflow-hidden">
-                    <h1 className="text-lg md:text-2xl lg:text-4xl">Uncover Your Next Favorite Book</h1>
-                    <div className="flex items-center gap-1.5 md:gap-6">
-                        <Tabs defaultValue="all" value={filter} onValueChange={setFilter}>
-                            <TabsList>
-                                <TabsTrigger onClick={() => setFilter("all")} value="all">All</TabsTrigger>
-                                <TabsTrigger onClick={() => setFilter("FICTION")} value="FICTION">Fiction</TabsTrigger>
-                                <TabsTrigger onClick={() => setFilter("NON_FICTION")} value="NON_FICTION">Non Fiction</TabsTrigger>
-                                <TabsTrigger onClick={() => setFilter("SCIENCE")} value="SCIENCE">Fiction</TabsTrigger>
-                                <TabsTrigger onClick={() => setFilter("BIOGRAPHY")} value="BIOGRAPHY">Biography</TabsTrigger>
-                                <TabsTrigger onClick={() => setFilter("FANTASY")} value="FANTASY">Fantasy</TabsTrigger>
-                            </TabsList>
-                        </Tabs>
+                {
+                    focus &&
+                    <div className="absolute top-1/2 left-1/2 -translate-1/2 flex gap-2 z-10">
 
                         {/* For Adding a new book */}
-                        <Dialog open={newDataForm} onOpenChange={setNewDataForm}>
+                        <Dialog open={isEditData} onOpenChange={setIsEditData}>
                             <DialogTrigger asChild>
-                                <Button className="text-[8px] md:text-[10px] lg:text-[12px] px-2 py-1 md:px-4 md:py-2">Add Books</Button>
+                                <div className="p-2 rounded-full bg-white">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <PenLine className="hover:text-green-500" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Edit</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </div>
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-[425px]">
 
                                 <Form {...form}>
-                                    <form onSubmit={form.handleSubmit(onSubmit)} className="w-2/3 space-y-6">
+                                    <form onSubmit={form.handleSubmit(handleEdit)} className="w-2/3 space-y-6">
                                         <FormField
                                             control={form.control}
                                             name="title"
@@ -266,37 +257,64 @@ const Book = () => {
                                 </Form>
                                 {/* Spinner for data loading */}
                                 {
-                                    isLoadingforCreatig &&
+                                    isLoading &&
                                     <div className="absolute top-1/2 left-1/2 -translate-1/2">
                                         <HashLoader />
                                     </div>
                                 }
                             </DialogContent>
                         </Dialog>
-                    
-                    </div>
-                </div>
-                {/* Rendering Books */}
-                <div className="mt-16 px-4 w-full flex items-center justify-center">
-                    <div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 md:gap-8 lg:gap-20">
-                            {
-                                bookData?.map((data) => <EachBook key={data._id} data={data} />)
-                            }
+
+                        <div onClick={handleDelete} className="p-2 rounded-full bg-white">
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Trash2 className="hover:text-green-500" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Delete</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </div>
+
+
+                        <div className="p-2 rounded-full bg-white">
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <HandCoins className="hover:text-green-500" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Borrow Book</p>
+                                </TooltipContent>
+                            </Tooltip>
                         </div>
                     </div>
-                </div>
-                {/* Handeling No Books */}
-                {
-                    bookData?.length === 0 &&
-                    <div className="flex items-center justify-center my-20">
-                        <h1 className="text-2xl text-gray-500/85">No Book Found!</h1>
-                    </div>
                 }
+            </div>
+            <div className="px-2">
+                <h1 className="mt-4 text-center font-semibold text-lg">{data?.title}</h1>
+                <div className="mt-2 flex items-center justify-between">
+                    <p className="text-[14px] text-red-500 font-bold">Copies: {data?.copies}</p>
+                    <Badge
+                        variant="secondary"
+                        className={cn("text-white", {
+                            "bg-green-500": data?.available,
+                            "bg-red-500": !data?.available,
+                        })}
+                    >
+                        {data?.available ? <BadgeCheckIcon /> : <CircleX />}
+                        {data?.available ? "Available" : "Not Available"}
+                    </Badge>
+                    {/* <p className="text-[12px] "></p> */}
+                </div>
+                <div className="mt-4">
+                    <p className="text-[12px]"> Author: {data?.author}</p>
+                    <p className="text-[12px]">Genre: {data?.genre}</p>
+                    <p className="text-[12px]">ISBN: {data?.isbn}</p>
+                </div>
             </div>
 
         </div>
     );
 };
 
-export default Book;
+export default EachBook;
