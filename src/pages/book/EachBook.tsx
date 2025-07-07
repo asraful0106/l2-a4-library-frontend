@@ -345,6 +345,7 @@ const EachBook = ({ data }: { data: IBook }) => {
                             </DialogContent>
                         </Dialog>
 
+                        {/* For Deleting the book */}
                         <div onClick={handleDelete} className="p-2 rounded-full bg-white">
                             <Tooltip>
                                 <TooltipTrigger asChild>
