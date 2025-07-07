@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery} from '@reduxjs/toolkit/query/react';
 export const libraryApi = createApi({
     reducerPath: 'libraryApi',
     baseQuery: fetchBaseQuery({ baseUrl: 'https://a3-library-management-api-three.vercel.app/' }),
-    tagTypes:["BookData", "BorrowSummary"],
+    tagTypes:["BookData", "BorrowSummary", "SingleBookData"],
     endpoints: (builder) =>({
         getAllBook: builder.query({
             query: () => '/api/books',
@@ -11,6 +11,7 @@ export const libraryApi = createApi({
         },),
         getBookById: builder.query({
             query: (id) => `/api/books/${id}`,
+            providesTags: ["SingleBookData"]
         }),
         createABook: builder.mutation({
             query: (newBook) => ({
@@ -45,7 +46,7 @@ export const libraryApi = createApi({
                 method: 'POST',
                 body: data,
             }),
-            invalidatesTags:["BorrowSummary", "BookData"]
+            invalidatesTags:["BorrowSummary", "BookData", "SingleBookData"],
         })
     }),
 });

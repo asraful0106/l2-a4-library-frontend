@@ -1,93 +1,101 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { useEditABookMutation, useGetBookByIdQuery } from "@/redux/api/baseApi";
+import { useBorrowABookMutation, useGetBookByIdQuery } from "@/redux/api/baseApi";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { BadgeCheckIcon, CircleX } from "lucide-react";
+import { BadgeCheckIcon, CalendarIcon, CircleX } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useParams } from "react-router";
 import { HashLoader } from "react-spinners";
 import { toast } from "react-toastify";
+import Swal from "sweetalert2";
 import z from "zod";
 
+import { format } from "date-fns"
+
 const BorrowBook = () => {
-    const { id } = useParams();
+    const { bookId } = useParams();
     // console.log("Id: ", id)
-    const { data: getData, isLoading: isDataLoading, isError } = useGetBookByIdQuery(id);
+    const { data: getData, isLoading: isDataLoading, isError } = useGetBookByIdQuery(bookId);
     const data = getData?.data;
 
-    // For handeling the edit modal
-    const [isEditData, setIsEditData] = useState<boolean>(false);
-
-    const FormSchema = z.object({
-        title: z.string().min(1, {
-            message: 'Title is required'
-        }),
-        author: z.string().min(1, {
-            message: 'Author is required'
-        }),
-        genre: z.enum(["FICTION", "NON_FICTION", "SCIENCE", "BIOGRAPHY", "FANTASY"], {
-            message: 'Genre should be "FICTION", "NON_FICTION", "SCIENCE", "BIOGRAPHY", "FANTASY"'
-        }),
-        isbn: z.string().min(1, {
-            message: 'ISBN is required'
-        }),
-        copies: z.number().min(1, {
-            message: 'Copies should be a positive number'
-        }),
-        description: z.string().optional(),
-        available: z.boolean().optional(),
-    });
-
-    const form = useForm<z.infer<typeof FormSchema>>({
-        resolver: zodResolver(FormSchema),
-        defaultValues: {
-            ...data
-        },
-    });
-
-    // For handeling the edit book data
-    const [editABook, { isLoading, error }] = useEditABookMutation(data);
-    const handleEdit = async (formData: z.infer<typeof FormSchema>) => {
-        const res = await editABook({
-            ...data,
-            ...formData,
-            available: formData.copies > 0 ? true : false
+    const [isBorrowBook, setIsBorrowBook] = useState<boolean>(false);
+        const FormSchemaForBrowing = z.object({
+            // book: z.string().min(1, {
+            //     message: "Book ID is required"
+            // }),
+            quantity: z.number().min(1, {
+                message: 'Copies should be a positive number'
+            }),
+            dueDate: z.date({
+                message: 'Date is required'
+            }),
         });
-
-        if (error) {
-            toast.error('Something went wrong!', {
-                position: "top-right",
-                autoClose: 5000,
-                hideProgressBar: false,
-                closeOnClick: false,
-                pauseOnHover: true,
-                draggable: true,
-                progress: undefined,
-                theme: "light",
+    
+        const formForBorrow = useForm<z.infer<typeof FormSchemaForBrowing>>({
+            resolver: zodResolver(FormSchemaForBrowing),
+            defaultValues: {
+                quantity: 0,
+                dueDate: undefined
+            },
+        });
+    
+        const [borrowBook, { isLoading: createBorrowBookLoading }] = useBorrowABookMutation();
+    
+        const handleBorrowBook = async (formDataForBorrow: z.infer<typeof FormSchemaForBrowing>) => {
+            const res = await borrowBook({
+                ...formDataForBorrow,
+                dueDate: formDataForBorrow.dueDate?.toISOString(),
+                book: data._id,
             });
+    
+            console.log("Borrow Res: ", res);
+    
+            if (res?.error) {
+                toast.error('Something went wrong!', {
+                    position: "top-right",
+                    autoClose: 5000,
+                    hideProgressBar: false,
+                    closeOnClick: false,
+                    pauseOnHover: true,
+                    draggable: true,
+                    progress: undefined,
+                    theme: "light",
+                });
+            }
+            if (!res?.error) {
+                toast.success('Borrowed successfully!', {
+                    position: "top-right",
+                    autoClose: 5000,
+                    hideProgressBar: false,
+                    closeOnClick: false,
+                    pauseOnHover: true,
+                    draggable: true,
+                    progress: undefined,
+                    theme: "light",
+                });
+                formForBorrow.reset();
+                setIsBorrowBook(false);
+            }
+            if (
+                res?.error &&
+                typeof res.error === "object" &&
+                "data" in res.error &&
+                (res.error as { data?: { message?: string } }).data?.message === "Not enough Book to borrow."
+            ) {
+                Swal.fire({
+                    icon: "error",
+                    title: "Oops...",
+                    text: "Can't borrow more than the available quantity!",
+                });
+            }
         }
-        if (!res?.error) {
-            toast.success('New book added successfully!', {
-                position: "top-right",
-                autoClose: 5000,
-                hideProgressBar: false,
-                closeOnClick: false,
-                pauseOnHover: true,
-                draggable: true,
-                progress: undefined,
-                theme: "light",
-            });
-            form.reset();
-            setIsEditData(false);
-        }
-    }
     return (
         <div>
             {
@@ -128,82 +136,20 @@ const BorrowBook = () => {
                                 </Badge>
 
                                 {/* Edit Option */}
-                                <Dialog open={isEditData} onOpenChange={setIsEditData}>
+                                <Dialog open={isBorrowBook} onOpenChange={setIsBorrowBook}>
                                     <DialogTrigger asChild>
                                         <div className="mt-6 flex items-center justify-center">
-                                            <Button className="px-[20%]">Edit</Button>
+                                            <Button className="px-[20%]">Borrow Book</Button>
                                         </div>
                                     </DialogTrigger>
                                     <DialogContent className="sm:max-w-[425px]">
 
-                                        <Form {...form}>
-                                            <form onSubmit={form.handleSubmit(handleEdit)} className="w-2/3 space-y-6">
+                                        <Form {...formForBorrow}>
+                                            <form onSubmit={formForBorrow.handleSubmit(handleBorrowBook)} className="w-2/3 space-y-6">
+
                                                 <FormField
-                                                    control={form.control}
-                                                    name="title"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Title</FormLabel>
-                                                            <FormControl>
-                                                                <Input placeholder="Book Title" {...field} />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <FormField
-                                                    control={form.control}
-                                                    name="author"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Author</FormLabel>
-                                                            <FormControl>
-                                                                <Input placeholder="Author Name" {...field} />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <FormField
-                                                    control={form.control}
-                                                    name="genre"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Genre</FormLabel>
-                                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                                <FormControl>
-                                                                    <SelectTrigger>
-                                                                        <SelectValue placeholder="Select Genre" />
-                                                                    </SelectTrigger>
-                                                                </FormControl>
-                                                                <SelectContent>
-                                                                    <SelectItem value="FICTION">Fiction</SelectItem>
-                                                                    <SelectItem value="NON_FICTION">Non Fiction</SelectItem>
-                                                                    <SelectItem value="FANTASY">Fantasy</SelectItem>
-                                                                    <SelectItem value="SCIENCE">Science</SelectItem>
-                                                                    <SelectItem value="BIOGRAPHY">Biography</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <FormField
-                                                    control={form.control}
-                                                    name="isbn"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>ISBN</FormLabel>
-                                                            <FormControl>
-                                                                <Input placeholder="ISBN Number" {...field} />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <FormField
-                                                    control={form.control}
-                                                    name="copies"
+                                                    control={formForBorrow.control}
+                                                    name="quantity"
                                                     render={({ field }) => (
                                                         <FormItem>
                                                             <FormLabel>Copies</FormLabel>
@@ -220,28 +166,51 @@ const BorrowBook = () => {
                                                     )}
                                                 />
                                                 <FormField
-                                                    control={form.control}
-                                                    name="description"
+                                                    control={formForBorrow.control}
+                                                    name="dueDate"
                                                     render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Description</FormLabel>
-                                                            <FormControl>
-                                                                <Textarea
-                                                                    placeholder="About The Book"
-                                                                    className="resize-none"
-                                                                    {...field}
-                                                                />
-                                                            </FormControl>
+                                                        <FormItem className="flex flex-col">
+                                                            <FormLabel>Date of return</FormLabel>
+                                                            <Popover>
+                                                                <PopoverTrigger asChild>
+                                                                    <FormControl>
+                                                                        <Button
+                                                                            variant={"outline"}
+                                                                            className={cn(
+                                                                                "w-[240px] pl-3 text-left font-normal",
+                                                                                !field.value && "text-muted-foreground"
+                                                                            )}
+                                                                        >
+                                                                            {field.value ? (
+                                                                                format(field.value, "PPP")
+                                                                            ) : (
+                                                                                <span>Pick a date</span>
+                                                                            )}
+                                                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                                        </Button>
+                                                                    </FormControl>
+                                                                </PopoverTrigger>
+                                                                <PopoverContent className="w-auto p-0" align="start">
+                                                                    <Calendar
+                                                                        mode="single"
+                                                                        onSelect={field.onChange}
+                                                                        disabled={(date) =>
+                                                                            date < new Date() || date < new Date("1900-01-01")
+                                                                        }
+                                                                        captionLayout="dropdown"
+                                                                    />
+                                                                </PopoverContent>
+                                                            </Popover>
                                                             <FormMessage />
                                                         </FormItem>
                                                     )}
                                                 />
-                                                <Button type="submit">Submit</Button>
+                                                <Button type="submit">Borrow</Button>
                                             </form>
                                         </Form>
                                         {/* Spinner for data loading */}
                                         {
-                                            isLoading &&
+                                            createBorrowBookLoading &&
                                             <div className="absolute top-1/2 left-1/2 -translate-1/2">
                                                 <HashLoader />
                                             </div>

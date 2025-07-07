@@ -186,7 +186,7 @@ const EachBook = ({ data }: { data: IBook }) => {
                 progress: undefined,
                 theme: "light",
             });
-            form.reset();
+            formForBorrow.reset();
             setIsBorrowBook(false);
             navigation('/borrow-summary');
         }
