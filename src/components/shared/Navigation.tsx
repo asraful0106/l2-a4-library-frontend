@@ -59,7 +59,7 @@ const Navigation = () => {
                                 </NavLink>
                             </li>
                             <li>
-                                <NavLink to={'/create-book '} className={({ isActive }: { isActive: boolean }) =>
+                                <NavLink to={'/create-book'} className={({ isActive }: { isActive: boolean }) =>
                                     cn(
                                         "block py-2 px-3 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0",
                                         { "text-blue-700": isActive, "text-gray-900": !isActive }

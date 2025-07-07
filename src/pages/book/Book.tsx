@@ -43,7 +43,7 @@ const Book = () => {
     });
 
 
-    // For creating new task
+    // For creating new book
     const [createABook, { isLoading: isLoadingforCreatig, isError }] = useCreateABookMutation();
     // State for handeling the add book dialog
     const [newDataForm, setNewDataForm] = useState<boolean>(false);
