@@ -74,7 +74,8 @@ const CreateNewBook = () => {
         }
     }
     return (
-        <div className="min-w-screen min-h-screen flex items-center justify-center">
+        <div className="min-w-screen min-h-screen flex flex-col items-center justify-center">
+            <h1 className="text-xl font-bold">Add a new book</h1>
             <div className="shadow relative w-[70%] flex justify-center p-6">
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="w-2/3 space-y-6">

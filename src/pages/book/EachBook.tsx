@@ -21,6 +21,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useDeleteABookMutation, useEditABookMutation } from "@/redux/api/baseApi";
 import { toast } from "react-toastify";
 import Swal from 'sweetalert2';
+import { Link } from "react-router";
 
 const EachBook = ({ data }: { data: IBook }) => {
     const [focus, setFocus] = useState(false);
@@ -136,7 +137,7 @@ const EachBook = ({ data }: { data: IBook }) => {
                     focus &&
                     <div className="absolute top-1/2 left-1/2 -translate-1/2 flex gap-2 z-10">
 
-                        {/* For Adding a new book */}
+                        {/* For Editing a book */}
                         <Dialog open={isEditData} onOpenChange={setIsEditData}>
                             <DialogTrigger asChild>
                                 <div className="p-2 rounded-full bg-white">
@@ -291,7 +292,8 @@ const EachBook = ({ data }: { data: IBook }) => {
                 }
             </div>
             <div className="px-2">
-                <h1 className="mt-4 text-center font-semibold text-lg">{data?.title}</h1>
+                <Link to={`books/${data?._id}`}>
+                    <h1 className="mt-4 text-center font-semibold text-lg hover:cursor-pointer hover:underline">{data?.title}</h1></Link>
                 <div className="mt-2 flex items-center justify-between">
                     <p className="text-[14px] text-red-500 font-bold">Copies: {data?.copies}</p>
                     <Badge
