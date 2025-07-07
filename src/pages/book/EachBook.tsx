@@ -18,12 +18,17 @@ import { Button } from "@/components/ui/button";
 import { HashLoader } from "react-spinners";
 import z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useDeleteABookMutation, useEditABookMutation } from "@/redux/api/baseApi";
+import { useBorrowABookMutation, useDeleteABookMutation, useEditABookMutation } from "@/redux/api/baseApi";
 import { toast } from "react-toastify";
 import Swal from 'sweetalert2';
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { format } from "date-fns"
+import { CalendarIcon } from "lucide-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 const EachBook = ({ data }: { data: IBook }) => {
+    const navigation = useNavigate();
     const [focus, setFocus] = useState(false);
     const handleMouseEnter = () => {
         setFocus(true);
@@ -65,7 +70,7 @@ const EachBook = ({ data }: { data: IBook }) => {
     });
 
     // For handeling the edit book data
-    const [editABook, { isLoading, error }] = useEditABookMutation();
+    const [editABook, { isLoading }] = useEditABookMutation();
     const handleEdit = async (formData: z.infer<typeof FormSchema>) => {
         const res = await editABook({
             ...data,
@@ -73,7 +78,7 @@ const EachBook = ({ data }: { data: IBook }) => {
             available: formData.copies > 0 ? true : false
         });
 
-        if (error) {
+        if (res?.error) {
             toast.error('Something went wrong!', {
                 position: "top-right",
                 autoClose: 5000,
@@ -102,9 +107,9 @@ const EachBook = ({ data }: { data: IBook }) => {
     }
 
     // For handeling the delete
-    const[deleteABook] = useDeleteABookMutation();
+    const [deleteABook] = useDeleteABookMutation();
 
-    const handleDelete = async () =>{
+    const handleDelete = async () => {
         Swal.fire({
             title: "Are you sure?",
             text: "You won't be able to revert this!",
@@ -122,7 +127,81 @@ const EachBook = ({ data }: { data: IBook }) => {
                     icon: "success"
                 });
             }
-          });
+        });
+    }
+
+    // For handeling borrow 
+    const [isBorrowBook, setIsBorrowBook] = useState<boolean>(false);
+    const FormSchemaForBrowing = z.object({
+        // book: z.string().min(1, {
+        //     message: "Book ID is required"
+        // }),
+        quantity: z.number().min(1, {
+            message: 'Copies should be a positive number'
+        }),
+        dueDate: z.date({
+            message: 'Date is required'
+        }),
+    });
+
+    const formForBorrow = useForm<z.infer<typeof FormSchemaForBrowing>>({
+        resolver: zodResolver(FormSchemaForBrowing),
+        defaultValues: {
+            quantity: 0,
+            dueDate: undefined
+        },
+    });
+
+    const [borrowBook, { isLoading: createBorrowBookLoading }] = useBorrowABookMutation();
+
+    const handleBorrowBook = async (formDataForBorrow: z.infer<typeof FormSchemaForBrowing>) => {
+        const res = await borrowBook({
+            ...formDataForBorrow,
+            dueDate: formDataForBorrow.dueDate?.toISOString(),
+            book: data._id,
+        });
+
+        console.log("Borrow Res: ", res);
+
+        if (res?.error) {
+            toast.error('Something went wrong!', {
+                position: "top-right",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: false,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+                theme: "light",
+            });
+        }
+        if (!res?.error) {
+            toast.success('Borrowed successfully!', {
+                position: "top-right",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: false,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+                theme: "light",
+            });
+            form.reset();
+            setIsBorrowBook(false);
+            navigation('/borrow-summary');
+        }
+        if (
+            res?.error &&
+            typeof res.error === "object" &&
+            "data" in res.error &&
+            (res.error as { data?: { message?: string } }).data?.message === "Not enough Book to borrow."
+        ) {
+            Swal.fire({
+                icon: "error",
+                title: "Oops...",
+                text: "Can't borrow more than the available quantity!",
+            });
+        }
     }
 
     return (
@@ -277,17 +356,95 @@ const EachBook = ({ data }: { data: IBook }) => {
                             </Tooltip>
                         </div>
 
+                        {/* For borrow a book */}
+                        <Dialog open={isBorrowBook} onOpenChange={setIsBorrowBook}>
+                            <DialogTrigger asChild>
+                                <div className="p-2 rounded-full bg-white">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <HandCoins className="hover:text-green-500" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Borrow Book</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </div>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px]">
 
-                        <div className="p-2 rounded-full bg-white">
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <HandCoins className="hover:text-green-500" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>Borrow Book</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </div>
+                                <Form {...formForBorrow}>
+                                    <form onSubmit={formForBorrow.handleSubmit(handleBorrowBook)} className="w-2/3 space-y-6">
+
+                                        <FormField
+                                            control={formForBorrow.control}
+                                            name="quantity"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Copies</FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            type="number"
+                                                            placeholder="Total Book Copies"
+                                                            {...field}
+                                                            onChange={e => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={formForBorrow.control}
+                                            name="dueDate"
+                                            render={({ field }) => (
+                                                <FormItem className="flex flex-col">
+                                                    <FormLabel>Date of return</FormLabel>
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <FormControl>
+                                                                <Button
+                                                                    variant={"outline"}
+                                                                    className={cn(
+                                                                        "w-[240px] pl-3 text-left font-normal",
+                                                                        !field.value && "text-muted-foreground"
+                                                                    )}
+                                                                >
+                                                                    {field.value ? (
+                                                                        format(field.value, "PPP")
+                                                                    ) : (
+                                                                        <span>Pick a date</span>
+                                                                    )}
+                                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                                </Button>
+                                                            </FormControl>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-0" align="start">
+                                                            <Calendar
+                                                                mode="single"
+                                                                onSelect={field.onChange}
+                                                                disabled={(date) =>
+                                                                    date < new Date() || date < new Date("1900-01-01")
+                                                                }
+                                                                captionLayout="dropdown"
+                                                            />
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <Button type="submit">Borrow</Button>
+                                    </form>
+                                </Form>
+                                {/* Spinner for data loading */}
+                                {
+                                    createBorrowBookLoading &&
+                                    <div className="absolute top-1/2 left-1/2 -translate-1/2">
+                                        <HashLoader />
+                                    </div>
+                                }
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 }
             </div>

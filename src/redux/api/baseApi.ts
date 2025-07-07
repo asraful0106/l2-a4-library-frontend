@@ -38,8 +38,16 @@ export const libraryApi = createApi({
         getBorrowSummary: builder.query({
             query: () => '/api/borrow',
             providesTags: ["BorrowSummary"]
+        }),
+        borrowABook: builder.mutation({
+            query: (data) => ({
+                url: '/api/borrow',
+                method: 'POST',
+                body: data,
+            }),
+            invalidatesTags:["BorrowSummary", "BookData"]
         })
     }),
 });
 
-export const { useGetAllBookQuery, useCreateABookMutation, useDeleteABookMutation,useEditABookMutation, useGetBookByIdQuery, useGetBorrowSummaryQuery } = libraryApi;
+export const { useGetAllBookQuery, useCreateABookMutation, useDeleteABookMutation,useEditABookMutation, useGetBookByIdQuery, useGetBorrowSummaryQuery, useBorrowABookMutation } = libraryApi;

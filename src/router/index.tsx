@@ -36,6 +36,9 @@ const router = createBrowserRouter([
 
             },
             {
+                path: "/borrow/:bookId"
+            },
+            {
                 path: "/borrow-summary",
                 Component: BorrowSummary
             }
