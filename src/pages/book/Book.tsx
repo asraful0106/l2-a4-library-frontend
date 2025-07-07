@@ -92,7 +92,7 @@ const Book = () => {
     }
     
     //   Featching Data From API
-    const { data, error, isLoading } = useGetAllBookQuery(undefined);
+    const { data } = useGetAllBookQuery(undefined);
     let bookData: IBook[] = data?.data;
     // State for doing filter
     const [filter, setFilter] = useState<string>('all');
