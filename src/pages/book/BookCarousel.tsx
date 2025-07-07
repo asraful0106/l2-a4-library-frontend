@@ -14,10 +14,10 @@ const BookCarousel = () => {
         Autoplay({ delay: 5000, stopOnInteraction: true })
     )
     const imageLink: string[] = [
-        "/src/assets/images/book-r-1.jpg",
-        "/src/assets/images/book-r-2.jpg",
-        "/src/assets/images/book-r-3.jpg",
-        "/src/assets/images/book-r-4.jpg"
+        "/images/book-r-1.jpg",
+        "/images/book-r-2.jpg",
+        "/images/book-r-3.jpg",
+        "/images/book-r-4.jpg"
     ]
     return (
         <div className="w-full h-[15rem] lg:h-[40rem] flex items-center justify-center rounded overflow-hidden">
